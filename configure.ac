@@ -2,7 +2,7 @@
 
 # Prelude.
 AC_PREREQ([2.59])
-AC_INIT([Autobroadcast], [0.1], [info@artcom.de])
+AC_INIT([Autobroadcast], [0.1], [support@artcom.de])
 
 # unique source file --- primitive safety check 
 AC_CONFIG_SRCDIR([src/autobroadcast.c])

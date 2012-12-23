@@ -1,63 +1,65 @@
 #include <stdlib.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <netinet/in.h>
 #include <check.h>
 #include "../src/autobroadcast.h"
 
-Money *five_dollars;
+#define SMALL_BUFFER 512
+#define PORT 2345
 
 void
 setup (void)
 {
-  five_dollars = money_create (5, "USD");
 }
 
 void
 teardown (void)
 {
-  money_free (five_dollars);
 }
 
-START_TEST (test_money_create)
+START_TEST (test_small_payload)
 {
-  fail_unless (money_amount (five_dollars) == 5,
-	       "Amount not set correctly on creation");
-  fail_unless (strcmp (money_currency (five_dollars), "USD") == 0,
-	       "Currency not set correctly on creation");
-}
-END_TEST
+    /* set up listenling socket */
+    struct sockaddr_in si_me, si_other;
+    int s, i, bytes, slen=sizeof(si_other);
+    char recv_buf[SMALL_BUFFER], send_buf[SMALL_BUFFER];
+    
+    fail_if ((s=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1, "listening socket");
+    
+    memset((char *) &si_me, 0, sizeof(si_me));
+    si_me.sin_family = AF_INET;
+    si_me.sin_port = htons(PORT);
+    si_me.sin_addr.s_addr = htonl(INADDR_ANY);
+    fail_if (bind(s, (struct sockaddr *) &si_me, sizeof(si_me)) == -1,"bind");
 
-START_TEST (test_money_create_neg)
-{
-  Money *m = money_create (-1, "USD");
-  fail_unless (m == NULL,
-	       "NULL should be returned on attempt to create with "
-	       "a negative amount");
-}
-END_TEST
+    /* send random data */
+    for(i = 0; i < SMALL_BUFFER; i++) {
+      send_buf[i] = rand() % 255;
+    }
+    broadcast(PORT, send_buf, SMALL_BUFFER); 
 
-START_TEST (test_money_create_zero)
-{
-  Money *m = money_create (0, "USD");
-  fail_unless (money_amount (m) == 0, 
-	       "Zero is a valid amount of money");
+    /* check if data was received */
+    fail_if ((bytes = recvfrom(s, recv_buf, SMALL_BUFFER, MSG_DONTWAIT, (struct sockaddr *) &si_other, &slen))==-1, "receiving data");
+    close(s);
+    printf("received %d bytes\n", bytes);
+    fail_unless(bytes == SMALL_BUFFER, "received data length mismatch");
+    fail_unless(strncmp(send_buf, recv_buf, SMALL_BUFFER) == 0, "data not identical");
+    
+    return;
 }
 END_TEST
 
 Suite *
-money_suite (void)
+autobroadcast_suite (void)
 {
-  Suite *s = suite_create ("Money");
+  Suite *s = suite_create ("Autobroadcast");
 
   /* Core test case */
   TCase *tc_core = tcase_create ("Core");
   tcase_add_checked_fixture (tc_core, setup, teardown);
-  tcase_add_test (tc_core, test_money_create);
+  tcase_add_test (tc_core, test_small_payload);
   suite_add_tcase (s, tc_core);
-
-  /* Limits test case */
-  TCase *tc_limits = tcase_create ("Limits");
-  tcase_add_test (tc_limits, test_money_create_neg);
-  tcase_add_test (tc_limits, test_money_create_zero);
-  suite_add_tcase (s, tc_limits);
 
   return s;
 }
@@ -66,7 +68,7 @@ int
 main (void)
 {
   int number_failed;
-  Suite *s = money_suite ();
+  Suite *s = autobroadcast_suite ();
   SRunner *sr = srunner_create (s);
   srunner_run_all (sr, CK_NORMAL);
   number_failed = srunner_ntests_failed (sr);

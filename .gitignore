@@ -20,6 +20,7 @@ libtool
 *.la
 *.so*
 *.a
+*.swp
 .deps
 *.tar*
 *.zip
@@ -29,3 +30,4 @@ libtool
 app.info
 coverage_report
 tests/.libs/
+src/.libs/
