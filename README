@@ -1,1 +1,15 @@
-apt-get install autoconf libtool
+This library should simplify the broadcasting of data in up to about 64K packets. It uses UDP's build in broadcasting and fragmentation features. It also automatically detects which network interfaces are active and support broadcasts and queries their broadcast addresses. 
+
+Building:
+
+you will need the autoconf suite, libtool and check for the unit tests.
+
+apt-get install autoconf libtool check
+
+now just try:
+
+autoreconf --install
+./configure
+make check
+
+see tests/check_autobroadcast.c for example usage, as well as how to listen for broadcasted packages.
