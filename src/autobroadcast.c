@@ -7,44 +7,52 @@
 #include <string.h>
 #include "autobroadcast.h"
 
-ssize_t broadcast(unsigned short port, const void *buf, size_t len) {
-    struct sockaddr_in si_other;
-    struct ifaddrs *ifaddr, *ifa;
-    int s, i, slen=sizeof(si_other);
-    int  on = 1;
-    int family;
-    char host[NI_MAXHOST];
+ssize_t broadcast(unsigned short thePort, const void *theSendData, size_t theSendDataLength) {
+    struct sockaddr_in destinationEndpoint;
+    struct ifaddrs *firstInterfaceAddress=0, *curInterfaceAddress;
+    int udpSocket = 0;
+    int on = 1;
 
-    /* send UDP DGRAM */ 
-    if ((s=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
-        return -1;
-    }
-    setsockopt(s, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on));
+    ssize_t returnValue = -1;
+    do { /* we use a fake do/while loop as a finally construct */
+        /* send UDP DGRAM */ 
+        if ((udpSocket=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
+            break;
+        }
+        setsockopt(udpSocket, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on));
 
-    /* iterate over all interfaces */
-    if (getifaddrs(&ifaddr) == -1) {
-        return -1;
-    } 
-    /* Walk through linked list, maintaining head pointer so we can free list later */
+        /* iterate over all interfaces */
+        if (getifaddrs(&firstInterfaceAddress) == -1) {
+            break;
+        } 
+        /* Walk through linked list, maintaining head pointer so we can free list later */
 
-    for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-        if (ifa->ifa_addr == NULL)
-            continue;
-        if ((ifa->ifa_flags & IFF_BROADCAST) == 0)
-            continue;
-        if (ifa->ifa_addr->sa_family == AF_INET) {
-            memcpy(&si_other, ifa->ifa_addr, sizeof(si_other));
-            si_other.sin_port = htons(port);
-
-            if (sendto(s, buf, len, 0, (struct sockaddr *) &si_other, slen)==-1) {
-                return -1;
+        for (curInterfaceAddress = firstInterfaceAddress; curInterfaceAddress != NULL; curInterfaceAddress = curInterfaceAddress->ifa_next) {
+            if (curInterfaceAddress->ifa_addr == NULL)
+                continue;
+            if ((curInterfaceAddress->ifa_flags & IFF_BROADCAST) == 0)
+                continue;
+            if (curInterfaceAddress->ifa_addr->sa_family == AF_INET) {
+                memcpy(&destinationEndpoint, curInterfaceAddress->ifa_broadaddr, sizeof(destinationEndpoint));
+                destinationEndpoint.sin_port = htons(thePort);
+                returnValue = sendto(udpSocket, theSendData, theSendDataLength, 
+                                         0, (struct sockaddr *) &destinationEndpoint, 
+                                         sizeof(destinationEndpoint)); 
+                if (returnValue == -1) { /* something when wrong */
+                    break;
+                }
             }
         }
+    } while (0);
+
+    /* finally - clean up */
+    if (firstInterfaceAddress) {
+        freeifaddrs(firstInterfaceAddress);
     }
 
-    freeifaddrs(ifaddr);  
-
-    close(s);
-    return 0;
+    if (udpSocket) {
+        close(udpSocket);
+    }
+    return returnValue;
 }
 

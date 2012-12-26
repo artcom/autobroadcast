@@ -3,6 +3,6 @@
 
 #include <sys/types.h>
 
-ssize_t broadcast(unsigned short port, const void *buf, size_t len);
+ssize_t broadcast(unsigned short thePort, const void *theSendData, size_t theSendDataLength);
 
 #endif /* AUTOBROADCAST_H */

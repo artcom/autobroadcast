@@ -5,7 +5,7 @@
 #include <check.h>
 #include "../src/autobroadcast.h"
 
-#define SMALL_BUFFER_SIZE 512
+#define SMALL_BUFFER_SIZE 2000
 #define RECEIVE_BUFFER_SIZE 65536
 #define PORT 2345
 
@@ -36,9 +36,12 @@ START_TEST (test_small_payload)
 
     /* send random data */
     for(i = 0; i < SMALL_BUFFER_SIZE; i++) {
-      send_buf[i] = rand() % 255;
+      send_buf[i] = 66;
     }
-    broadcast(PORT, send_buf, SMALL_BUFFER_SIZE); 
+    send_buf[0] = 65;
+    send_buf[SMALL_BUFFER_SIZE-1] = 67;
+    fail_unless(broadcast(PORT, send_buf, SMALL_BUFFER_SIZE) == SMALL_BUFFER_SIZE); 
+    fail_unless(broadcast(PORT, send_buf, SMALL_BUFFER_SIZE) == SMALL_BUFFER_SIZE); 
 
     /* check if data was received */
     fail_if ((bytes = recvfrom(s, recv_buf, RECEIVE_BUFFER_SIZE, MSG_DONTWAIT, (struct sockaddr *) &si_other, &slen))==-1, "receiving data");
