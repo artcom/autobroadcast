@@ -11,15 +11,21 @@ ssize_t broadcast(unsigned short thePort, const void *theSendData, size_t theSen
     struct sockaddr_in destinationEndpoint;
     struct ifaddrs *firstInterfaceAddress=0, *curInterfaceAddress;
     int udpSocket = 0;
-    int on = 1;
+    int BROADCAST_FLAG = 1; /* enable UDP broadcasts */
+    int MTU_DISCOVERY_MODE = IP_PMTUDISC_DONT; /* allow UDP fragmentation (see man udp 7) */
 
     ssize_t returnValue = -1;
-    do { /* we use a fake do/while loop as a finally construct */
+    do { /* we use a fake do/while loop as a "try/finally" construct */
         /* send UDP DGRAM */ 
         if ((udpSocket=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
             break;
         }
-        setsockopt(udpSocket, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on));
+        if (setsockopt(udpSocket, SOL_SOCKET, SO_BROADCAST, &BROADCAST_FLAG, sizeof(BROADCAST_FLAG))) {
+            break;
+        }
+        if (setsockopt(udpSocket, IPPROTO_IP, IP_MTU_DISCOVER, &MTU_DISCOVERY_MODE, sizeof(MTU_DISCOVERY_MODE))) {
+            break;
+        }
 
         /* iterate over all interfaces */
         if (getifaddrs(&firstInterfaceAddress) == -1) {

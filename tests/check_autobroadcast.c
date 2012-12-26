@@ -5,7 +5,7 @@
 #include <check.h>
 #include "../src/autobroadcast.h"
 
-#define SMALL_BUFFER_SIZE 2000
+#define SMALL_BUFFER_SIZE 40000
 #define RECEIVE_BUFFER_SIZE 65536
 #define PORT 2345
 
